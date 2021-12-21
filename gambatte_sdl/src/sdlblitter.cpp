@@ -521,7 +521,7 @@ void SdlBlitter::applyScalerToSurface(SDL_Surface *sourcesurface) {
 	}
 	else if (selectedscaler == "1.5x Fast")
 	{
-		offset = (2 * (640 - 480) / 2) + ((480 - 432) / 2) * screenbuffer->pitch;
+		offset = (4 * (640 - 480) / 2) + ((480 - 432) / 2) * screenbuffer->pitch;
 		scale3x((uint32_t*)((uint8_t *)screenbuffer->pixels + offset), (uint32_t*)sourcesurface->pixels);
 	}
 	else if (selectedscaler == "1.5x Smooth")
