@@ -137,8 +137,8 @@ void SdlBlitter::SetVid(int w, int h, int bpp){
 #elif VERSION_RETROFW
 	screen = SDL_SetVideoMode(w, h, bpp, SDL_HWSURFACE | SDL_TRIPLEBUF);
 #elif defined VERSION_BITTBOY || defined VERSION_POCKETGO
-	screen = SDL_SetVideoMode(w, h, 32, SDL_HWSURFACE | SDL_DOUBLEBUF);
-	screenbuffer = SDL_CreateRGBSurface(SDL_HWSURFACE, w, h, 32, 0, 0, 0, 0);
+	screen = SDL_SetVideoMode(640, 480, 32, SDL_HWSURFACE | SDL_DOUBLEBUF);
+	screenbuffer = SDL_CreateRGBSurface(SDL_HWSURFACE, 640, 480, 32, 0, 0, 0, 0);
 #else
 	screen = SDL_SetVideoMode(w, h, 32, SDL_HWSURFACE | SDL_DOUBLEBUF);
 #endif
@@ -521,8 +521,8 @@ void SdlBlitter::applyScalerToSurface(SDL_Surface *sourcesurface) {
 	}
 	else if (selectedscaler == "1.5x Fast")
 	{
-		offset = (2 * (320 - 240) / 2) + ((240 - 216) / 2) * screenbuffer->pitch;
-		scale15x((uint32_t*)((uint8_t *)screenbuffer->pixels + offset), (uint32_t*)sourcesurface->pixels);
+		offset = (2 * (640 - 480) / 2) + ((480 - 432) / 2) * screenbuffer->pitch;
+		scale3x((uint32_t*)((uint8_t *)screenbuffer->pixels + offset), (uint32_t*)sourcesurface->pixels);
 	}
 	else if (selectedscaler == "1.5x Smooth")
 	{

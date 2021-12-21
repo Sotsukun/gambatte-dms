@@ -204,6 +204,25 @@ void scale15x(uint32_t *to, uint32_t *from)
     }
 }
 
+void scale3x(uint32_t *to, uint32_t *from)
+{
+    unsigned int x, y, z = 0;
+
+    for(y = 0; y < 144; y++) {
+        for(z = 0; z < 3; z++) {
+            for(x = 0; x < 160; x++) {
+                *to++ = *from;
+                *to++ = *from;
+                *to++ = *from++;
+            }
+            to += (640 - (160*3));
+            from -= 160;
+        }
+        from += 160;
+    }
+}
+
+
 /*
  * Approximately bilinear scalers
  *
