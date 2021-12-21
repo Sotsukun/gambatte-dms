@@ -32,6 +32,7 @@
 SDL_Surface *lastframe;
 SDL_Surface *currframe;
 SDL_Surface *borderimg;
+SDL_Surface *screenbuffer;
 
 struct SdlBlitter::SurfaceDeleter {
 	//static void del(SDL_Surface *s) { SDL_FreeSurface(s); }
@@ -46,9 +47,9 @@ struct SdlBlitter::SurfaceDeleter {
 SdlBlitter::SdlBlitter(unsigned inwidth, unsigned inheight,
                        int scale, bool yuv, bool startFull)
 : screen()
-, surface(SDL_CreateRGBSurface(SDL_SWSURFACE, 160, 144, 16, 0, 0, 0, 0))
-, overlay_(screen && scale > 1 && yuv
-           ? SDL_CreateYUVOverlay(inwidth * 2, inheight, SDL_UYVY_OVERLAY, screen)
+, surface(SDL_CreateRGBSurface(SDL_SWSURFACE, 160, 144, 32, 0, 0, 0, 0))
+, overlay_(screenbuffer && scale > 1 && yuv
+           ? SDL_CreateYUVOverlay(inwidth * 2, inheight, SDL_UYVY_OVERLAY, screenbuffer)
            : 0)
 {
 	if (overlay_)
@@ -61,8 +62,8 @@ SdlBlitter::~SdlBlitter() {
 }
 
 void init_ghostframes() {
-	lastframe = SDL_CreateRGBSurface(SDL_SWSURFACE, 160, 144, 16, 0, 0, 0, 0);
-	currframe = SDL_CreateRGBSurface(SDL_SWSURFACE, 160, 144, 16, 0, 0, 0, 0);
+	lastframe = SDL_CreateRGBSurface(SDL_SWSURFACE, 160, 144, 32, 0, 0, 0, 0);
+	currframe = SDL_CreateRGBSurface(SDL_SWSURFACE, 160, 144, 32, 0, 0, 0, 0);
 	SDL_SetAlpha(lastframe, SDL_SRCALPHA, 128);
 }
 
@@ -136,9 +137,10 @@ void SdlBlitter::SetVid(int w, int h, int bpp){
 #elif VERSION_RETROFW
 	screen = SDL_SetVideoMode(w, h, bpp, SDL_HWSURFACE | SDL_TRIPLEBUF);
 #elif defined VERSION_BITTBOY || defined VERSION_POCKETGO
-	screen = SDL_SetVideoMode(w, h, bpp, SDL_SWSURFACE);
+	screen = SDL_SetVideoMode(w, h, 32, SDL_HWSURFACE | SDL_DOUBLEBUF);
+	screenbuffer = SDL_CreateRGBSurface(SDL_HWSURFACE, w, h, 32, 0, 0, 0, 0);
 #else
-	screen = SDL_SetVideoMode(w, h, bpp, SDL_HWSURFACE | SDL_DOUBLEBUF);
+	screen = SDL_SetVideoMode(w, h, 32, SDL_HWSURFACE | SDL_DOUBLEBUF);
 #endif
 }
 
@@ -271,7 +273,7 @@ void SdlBlitter::setBufferDimensions() {
 	{
 		SetVid(320, 240, 16);
 	}
-	menu_set_screen(screen);
+	menu_set_screen(screenbuffer);
 	init_ghostframes();
 }
 
@@ -388,7 +390,7 @@ SdlBlitter::PixelBuffer SdlBlitter::inBuffer() const {
 		pb.pixels = overlay_->pixels[0];
 		pb.format = UYVY;
 		pb.pitch = overlay_->pitches[0] >> 2;
-	} else if (SDL_Surface *s = surface ? surface : screen) {
+	} else if (SDL_Surface *s = surface ? surface : screenbuffer) {
 		pb.pixels = (Uint8*)(s->pixels) + s->offset;
 		pb.format = s->format->BitsPerPixel == 16 ? RGB16 : RGB32;
 		pb.pitch = s->pitch / s->format->BytesPerPixel;
@@ -400,9 +402,9 @@ SdlBlitter::PixelBuffer SdlBlitter::inBuffer() const {
 template<typename T>
 inline void SdlBlitter::swScale() {
 	T const *src = reinterpret_cast<T *>(static_cast<char *>(surface->pixels) + surface->offset);
-	T       *dst = reinterpret_cast<T *>(static_cast<char *>(screen->pixels) + screen->offset);
+	T       *dst = reinterpret_cast<T *>(static_cast<char *>(screenbuffer->pixels) + screenbuffer->offset);
 	scaleBuffer(src, dst, surface->w, surface->h,
-	            screen->pitch / screen->format->BytesPerPixel, screen->h / surface->h);
+	            screenbuffer->pitch / screenbuffer->format->BytesPerPixel, screenbuffer->h / surface->h);
 }
 
 void blend_frames(SDL_Surface *surface) {
@@ -511,156 +513,156 @@ void SdlBlitter::applyScalerToSurface(SDL_Surface *sourcesurface) {
 	if (selectedscaler == "No Scaling")
 	{
 		SDL_Rect dst;
-		dst.x = (screen->w - sourcesurface->w) / 2;
-		dst.y = (screen->h - sourcesurface->h) / 2;
+		dst.x = (screenbuffer->w - sourcesurface->w) / 2;
+		dst.y = (screenbuffer->h - sourcesurface->h) / 2;
 		dst.w = sourcesurface->w;
 		dst.h = sourcesurface->h;
-		SDL_BlitSurface(sourcesurface, NULL, screen, &dst);
+		SDL_BlitSurface(sourcesurface, NULL, screenbuffer, &dst);
 	}
 	else if (selectedscaler == "1.5x Fast")
 	{
-		offset = (2 * (320 - 240) / 2) + ((240 - 216) / 2) * screen->pitch;
-		scale15x((uint32_t*)((uint8_t *)screen->pixels + offset), (uint32_t*)sourcesurface->pixels);
+		offset = (2 * (320 - 240) / 2) + ((240 - 216) / 2) * screenbuffer->pitch;
+		scale15x((uint32_t*)((uint8_t *)screenbuffer->pixels + offset), (uint32_t*)sourcesurface->pixels);
 	}
 	else if (selectedscaler == "1.5x Smooth")
 	{
-		offset = (2 * (320 - 240) / 2) + ((240 - 216) / 2) * screen->pitch;
-		scale15x_pseudobilinear((uint32_t*)((uint8_t *)screen->pixels + offset), (uint32_t*)sourcesurface->pixels);
+		offset = (2 * (320 - 240) / 2) + ((240 - 216) / 2) * screenbuffer->pitch;
+		scale15x_pseudobilinear((uint32_t*)((uint8_t *)screenbuffer->pixels + offset), (uint32_t*)sourcesurface->pixels);
 	}
 	else if (selectedscaler == "Aspect 1.66x Fast")
 	{
-		offset = (2 * (320 - 266) / 2) + ((240 - 240) / 2) * screen->pitch;
-		scale166x_fast((uint32_t*)((uint8_t *)screen->pixels + offset), (uint32_t*)sourcesurface->pixels);
+		offset = (2 * (320 - 266) / 2) + ((240 - 240) / 2) * screenbuffer->pitch;
+		scale166x_fast((uint32_t*)((uint8_t *)screenbuffer->pixels + offset), (uint32_t*)sourcesurface->pixels);
 	}
 	else if (selectedscaler == "Aspect 1.66x Smooth")
 	{
-		offset = (2 * (320 - 266) / 2) + ((240 - 240) / 2) * screen->pitch;
-		scale166x_pseudobilinear((uint32_t*)((uint8_t *)screen->pixels + offset), (uint32_t*)sourcesurface->pixels);
+		offset = (2 * (320 - 266) / 2) + ((240 - 240) / 2) * screenbuffer->pitch;
+		scale166x_pseudobilinear((uint32_t*)((uint8_t *)screenbuffer->pixels + offset), (uint32_t*)sourcesurface->pixels);
 	}
 	else if (selectedscaler == "FullScreen Fast")
 	{
-		fullscreen_upscale((uint32_t*)screen->pixels, (uint32_t*)sourcesurface->pixels);
+		fullscreen_upscale((uint32_t*)screenbuffer->pixels, (uint32_t*)sourcesurface->pixels);
 	}
 	else if (selectedscaler == "FullScreen Smooth")
 	{
-		fullscreen_upscale_pseudobilinear((uint32_t*)screen->pixels, (uint32_t*)sourcesurface->pixels);
+		fullscreen_upscale_pseudobilinear((uint32_t*)screenbuffer->pixels, (uint32_t*)sourcesurface->pixels);
 	}
 	else if (selectedscaler == "1.5x IPU-2x")
 	{
-		offset = (2 * (428 - 320) / 2) + ((320 - 288) / 2) * screen->pitch;
-		scale15x_2((uint32_t*)((uint8_t *)screen->pixels + offset), (uint32_t*)sourcesurface->pixels);
+		offset = (2 * (428 - 320) / 2) + ((320 - 288) / 2) * screenbuffer->pitch;
+		scale15x_2((uint32_t*)((uint8_t *)screenbuffer->pixels + offset), (uint32_t*)sourcesurface->pixels);
 	}
 	else if (selectedscaler == "1.5x DMG-2x")
 	{
-		offset = (2 * (428 - 320) / 2) + ((320 - 288) / 2) * screen->pitch;
+		offset = (2 * (428 - 320) / 2) + ((320 - 288) / 2) * screenbuffer->pitch;
 		if (gameiscgb == 1){
-			scale15x_dotmatrix2((uint32_t*)((uint8_t *)screen->pixels + offset), (uint32_t*)sourcesurface->pixels, menupalblack);
+			scale15x_dotmatrix2((uint32_t*)((uint8_t *)screenbuffer->pixels + offset), (uint32_t*)sourcesurface->pixels, menupalblack);
 		} else {
-			scale15x_dotmatrix2((uint32_t*)((uint8_t *)screen->pixels + offset), (uint32_t*)sourcesurface->pixels, menupalwhite);
+			scale15x_dotmatrix2((uint32_t*)((uint8_t *)screenbuffer->pixels + offset), (uint32_t*)sourcesurface->pixels, menupalwhite);
 		}
 	}
 	else if (selectedscaler == "1.5x Scan-2x")
 	{
-		offset = (2 * (428 - 320) / 2) + ((320 - 288) / 2) * screen->pitch;
-		scale15x_crt2((uint32_t*)((uint8_t *)screen->pixels + offset), (uint32_t*)sourcesurface->pixels);
+		offset = (2 * (428 - 320) / 2) + ((320 - 288) / 2) * screenbuffer->pitch;
+		scale15x_crt2((uint32_t*)((uint8_t *)screenbuffer->pixels + offset), (uint32_t*)sourcesurface->pixels);
 	}
 	else if (selectedscaler == "Aspect IPU-2x")
 	{
-		offset = (2 * (384 - 320) / 2) + ((288 - 288) / 2) * screen->pitch;
-		scale166x_2((uint32_t*)((uint8_t *)screen->pixels + offset), (uint32_t*)sourcesurface->pixels);
+		offset = (2 * (384 - 320) / 2) + ((288 - 288) / 2) * screenbuffer->pitch;
+		scale166x_2((uint32_t*)((uint8_t *)screenbuffer->pixels + offset), (uint32_t*)sourcesurface->pixels);
 	}
 	else if (selectedscaler == "Aspect DMG-2x")
 	{
-		offset = (2 * (384 - 320) / 2) + ((288 - 288) / 2) * screen->pitch;
+		offset = (2 * (384 - 320) / 2) + ((288 - 288) / 2) * screenbuffer->pitch;
 		if (gameiscgb == 1){
-			scale166x_dotmatrix2((uint32_t*)((uint8_t *)screen->pixels + offset), (uint32_t*)sourcesurface->pixels, menupalblack);
+			scale166x_dotmatrix2((uint32_t*)((uint8_t *)screenbuffer->pixels + offset), (uint32_t*)sourcesurface->pixels, menupalblack);
 		} else {
-			scale166x_dotmatrix2((uint32_t*)((uint8_t *)screen->pixels + offset), (uint32_t*)sourcesurface->pixels, menupalwhite);
+			scale166x_dotmatrix2((uint32_t*)((uint8_t *)screenbuffer->pixels + offset), (uint32_t*)sourcesurface->pixels, menupalwhite);
 		}
 	}
 	else if (selectedscaler == "Aspect Scan-2x")
 	{
-		offset = (2 * (384 - 320) / 2) + ((288 - 288) / 2) * screen->pitch;
-		scale166x_crt2((uint32_t*)((uint8_t *)screen->pixels + offset), (uint32_t*)sourcesurface->pixels);
+		offset = (2 * (384 - 320) / 2) + ((288 - 288) / 2) * screenbuffer->pitch;
+		scale166x_crt2((uint32_t*)((uint8_t *)screenbuffer->pixels + offset), (uint32_t*)sourcesurface->pixels);
 	}
 	else if (selectedscaler == "1.5x DMG-3x")
 	{
-		offset = (2 * (640 - 480) / 2) + ((480 - 432) / 2) * screen->pitch;
+		offset = (2 * (640 - 480) / 2) + ((480 - 432) / 2) * screenbuffer->pitch;
 		if (gameiscgb == 1){
-			scale15x_dotmatrix3((uint32_t*)((uint8_t *)screen->pixels + offset), (uint32_t*)sourcesurface->pixels, menupalblack);
+			scale15x_dotmatrix3((uint32_t*)((uint8_t *)screenbuffer->pixels + offset), (uint32_t*)sourcesurface->pixels, menupalblack);
 		} else {
-			scale15x_dotmatrix3((uint32_t*)((uint8_t *)screen->pixels + offset), (uint32_t*)sourcesurface->pixels, menupalwhite);
+			scale15x_dotmatrix3((uint32_t*)((uint8_t *)screenbuffer->pixels + offset), (uint32_t*)sourcesurface->pixels, menupalwhite);
 		}
 	}
 	else if (selectedscaler == "1.5x Scan-3x")
 	{
-		offset = (2 * (640 - 480) / 2) + ((480 - 432) / 2) * screen->pitch;
-		scale15x_crt3((uint32_t*)((uint8_t *)screen->pixels + offset), (uint32_t*)sourcesurface->pixels);
+		offset = (2 * (640 - 480) / 2) + ((480 - 432) / 2) * screenbuffer->pitch;
+		scale15x_crt3((uint32_t*)((uint8_t *)screenbuffer->pixels + offset), (uint32_t*)sourcesurface->pixels);
 	}
 	else if (selectedscaler == "Aspect DMG-3x")
 	{
-		offset = (2 * (576 - 480) / 2) + ((432 - 432) / 2) * screen->pitch;
+		offset = (2 * (576 - 480) / 2) + ((432 - 432) / 2) * screenbuffer->pitch;
 		if (gameiscgb == 1){
-			scale166x_dotmatrix3((uint32_t*)((uint8_t *)screen->pixels + offset), (uint32_t*)sourcesurface->pixels, menupalblack);
+			scale166x_dotmatrix3((uint32_t*)((uint8_t *)screenbuffer->pixels + offset), (uint32_t*)sourcesurface->pixels, menupalblack);
 		} else {
-			scale166x_dotmatrix3((uint32_t*)((uint8_t *)screen->pixels + offset), (uint32_t*)sourcesurface->pixels, menupalwhite);
+			scale166x_dotmatrix3((uint32_t*)((uint8_t *)screenbuffer->pixels + offset), (uint32_t*)sourcesurface->pixels, menupalwhite);
 		}
 	}
 	else if (selectedscaler == "Aspect Scan-3x")
 	{
-		offset = (2 * (576 - 480) / 2) + ((432 - 432) / 2) * screen->pitch;
-		scale166x_crt3((uint32_t*)((uint8_t *)screen->pixels + offset), (uint32_t*)sourcesurface->pixels);
+		offset = (2 * (576 - 480) / 2) + ((432 - 432) / 2) * screenbuffer->pitch;
+		scale166x_crt3((uint32_t*)((uint8_t *)screenbuffer->pixels + offset), (uint32_t*)sourcesurface->pixels);
 	}
 	else if (selectedscaler == "FullScreen IPU-2x")
 	{
-		fullscreen_2((uint32_t*)screen->pixels, (uint32_t*)sourcesurface->pixels);
+		fullscreen_2((uint32_t*)screenbuffer->pixels, (uint32_t*)sourcesurface->pixels);
 	}
 	else if (selectedscaler == "FullScreen DMG-2x")
 	{
 		if (gameiscgb == 1){
-			fullscreen_dotmatrix2((uint32_t*)screen->pixels, (uint32_t*)sourcesurface->pixels, menupalblack);
+			fullscreen_dotmatrix2((uint32_t*)screenbuffer->pixels, (uint32_t*)sourcesurface->pixels, menupalblack);
 		} else {
-			fullscreen_dotmatrix2((uint32_t*)screen->pixels, (uint32_t*)sourcesurface->pixels, menupalwhite);
+			fullscreen_dotmatrix2((uint32_t*)screenbuffer->pixels, (uint32_t*)sourcesurface->pixels, menupalwhite);
 		}
 	}
 	else if (selectedscaler == "FullScreen Scan-2x")
 	{
-		fullscreen_crt2((uint32_t*)screen->pixels, (uint32_t*)sourcesurface->pixels);
+		fullscreen_crt2((uint32_t*)screenbuffer->pixels, (uint32_t*)sourcesurface->pixels);
 	}
 	else if (selectedscaler == "FullScreen DMG-3x")
 	{
 		if (gameiscgb == 1){
-			fullscreen_dotmatrix3((uint32_t*)screen->pixels, (uint32_t*)sourcesurface->pixels, menupalblack);
+			fullscreen_dotmatrix3((uint32_t*)screenbuffer->pixels, (uint32_t*)sourcesurface->pixels, menupalblack);
 		} else {
-			fullscreen_dotmatrix3((uint32_t*)screen->pixels, (uint32_t*)sourcesurface->pixels, menupalwhite);
+			fullscreen_dotmatrix3((uint32_t*)screenbuffer->pixels, (uint32_t*)sourcesurface->pixels, menupalwhite);
 		}
 	}
 	else if (selectedscaler == "FullScreen Scan-3x")
 	{
-		fullscreen_crt3((uint32_t*)screen->pixels, (uint32_t*)sourcesurface->pixels);
+		fullscreen_crt3((uint32_t*)screenbuffer->pixels, (uint32_t*)sourcesurface->pixels);
 	}
 	else if (selectedscaler == "1.5x IPU" ||
 		selectedscaler == "Aspect IPU" ||
 		selectedscaler == "FullScreen IPU")
 	{
-		uint16_t *d = (uint16_t*)screen->pixels + (screen->w - sourcesurface->w) / 2 + (screen->h - sourcesurface->h) * screen->pitch / 4;
+		uint16_t *d = (uint16_t*)screenbuffer->pixels + (screenbuffer->w - sourcesurface->w) / 2 + (screenbuffer->h - sourcesurface->h) * screenbuffer->pitch / 4;
         uint16_t *s = (uint16_t*)sourcesurface->pixels;
         for (int y = 0; y < sourcesurface->h; y++)
         {
             memmove(d, s, sourcesurface->w * sizeof(uint16_t));
             s += sourcesurface->w;
-            d += screen->w;
+            d += screenbuffer->w;
         }
 	}
 	else
 	{
-		uint16_t *d = (uint16_t*)screen->pixels + (screen->w - sourcesurface->w) / 2 + (screen->h - sourcesurface->h) * screen->pitch / 4;
+		uint16_t *d = (uint16_t*)screenbuffer->pixels + (screenbuffer->w - sourcesurface->w) / 2 + (screenbuffer->h - sourcesurface->h) * screenbuffer->pitch / 4;
         uint16_t *s = (uint16_t*)sourcesurface->pixels;
         for (int y = 0; y < sourcesurface->h; y++)
         {
             memmove(d, s, sourcesurface->w * sizeof(uint16_t));
             s += sourcesurface->w;
-            d += screen->w;
+            d += screenbuffer->w;
         }
 	}
 }
@@ -684,7 +686,7 @@ void SdlBlitter::draw() {
 		return;
 
 	if((firstframe >= 0) && (firstframe <= 2)){ // paints border on frames 0,1 and 2 to avoid triple-buffer flickering
-		init_border(screen);
+		init_border(screenbuffer);
 	}
 
 	if((firstframe == 0) && (is_using_bios == 0)){ //if game is booting without bios, allow the user to reset game at any point.
@@ -728,7 +730,7 @@ void SdlBlitter::draw() {
 		}
 		applyScalerToSurface(currframe);
 	}
-	show_fps(screen, fps);
+	show_fps(screenbuffer, fps);
 }
 
 void SdlBlitter::scaleMenu() {
@@ -751,12 +753,13 @@ void SdlBlitter::present() {
 		return;
 
 	if (overlay_) {
-		SDL_Rect dstr = { 0, 0, Uint16(screen->w), Uint16(screen->h) };
+		SDL_Rect dstr = { 0, 0, Uint16(screenbuffer->w), Uint16(screenbuffer->h) };
 		SDL_UnlockYUVOverlay(overlay_.get());
 		SDL_DisplayYUVOverlay(overlay_.get(), &dstr);
 		SDL_LockYUVOverlay(overlay_.get());
 	} else {
 		//SDL_UpdateRect(screen_, 0, 0, screen_->w, screen_->h);
+		SDL_BlitSurface(screenbuffer, NULL, screen, NULL);
 		SDL_Flip(screen);
 	}
 }
