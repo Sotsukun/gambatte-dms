@@ -1,0 +1,15 @@
+CHAINPREFIX=/opt/gcc-arm-8.2-2018.08-x86_64-arm-linux-gnueabihf
+CROSS_COMPILE=arm-linux-gnueabihf-
+
+CC = $(CROSS_COMPILE)gcc
+CXX = $(CROSS_COMPILE)g++
+SYSROOT     := $(CHAINPREFIX)/arm-linux-gnueabihf
+
+OUTPUTNAME = gambatte-dms-miyoomini
+
+DEFINES = -DHAVE_STDINT_H -DVERSION_POCKETGO
+INCLUDES = -Isrc/gambatte_sdl -Ilibgambatte -Icommon -Iinclude -Ilibgambatte/include -Ilibgambatte/src -I$(shell pwd)/../SDK_miyoo283_demo_2048/dependency/release/include/cust_inc -I$(shell pwd)/../SDK_miyoo283_demo_2048/dependency/release/include/cust_inc/SDL/
+OPT_FLAGS  = -Ofast -fdata-sections -fdata-sections -fno-common -fno-PIC -flto -marm -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard -march=armv7ve -ffast-math -fomit-frame-pointer -fno-strength-reduce
+EXTRA_LDFLAGS = -L$(shell pwd)/../SDK_miyoo283_demo_2048/dependency/release/nvr/i2m/common/glibc/8.2.1/cust_libs/dynamic/ -L$(shell pwd)/../SDK_miyoo283_demo_2048/dependency/release/nvr/i2m/common/glibc/8.2.1/mi_libs/dynamic/ -lmi_common -lmi_sys -lmi_disp -lmi_panel -lmi_gfx -lmi_divp -lmi_ao -lmad -Wl,--as-needed -Wl,--gc-sections -flto -s 
+
+include common.mk
