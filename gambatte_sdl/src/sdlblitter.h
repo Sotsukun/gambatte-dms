@@ -59,6 +59,7 @@ public:
 	void scaleMenu();
 	SDL_Surface *screen;
 	SDL_Surface *surface;
+	SDL_Surface *screenbuffer;
 
 
 private:
