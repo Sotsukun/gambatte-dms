@@ -329,7 +329,7 @@ public:
 	: DescOption("input", 'i', 10)
 	{
 		ids_[0].keydata = SDLK_RETURN;
-		ids_[1].keydata = SDLK_ESCAPE;
+		ids_[1].keydata = SDLK_RCTRL;
 		ids_[2].keydata = SDLK_LCTRL;
 		ids_[3].keydata = SDLK_LALT;
 		ids_[4].keydata = SDLK_UP;
@@ -1075,7 +1075,7 @@ bool GambatteSdl::handleEvents(BlitterWrapper &blitter) {
 					}
 				} else {
 					switch (e.key.keysym.sym) {
-					case SDLK_RCTRL: // R button in bittboy / Reset button in PocketGo / Menu button in PlayGO
+					case SDLK_ESCAPE: // R button in bittboy / Reset button in PocketGo / Menu button in PlayGO
 					case SDLK_BACKSPACE: // R trigger
 					case SDLK_HOME: // Power button in Opendingux devices
 					case SDLK_END: // Power/Suspend button in RetroFW devices
