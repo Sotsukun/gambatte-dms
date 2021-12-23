@@ -349,13 +349,13 @@ void libmenu_set_font(SFont_Font *set_font) {
 void clean_menu_screen(menu_t *menu){
 	/* doing this twice is just an ugly hack to get round an 
 	 * opendingux pre-release hardware surfaces bug */
-	clear_surface(screen, 0);
+	clear_surface(blitter_p->blitter_.screenbuffer, 0);
 	redraw(menu);
 	//SDL_Flip(screen);
-	clear_surface(screen, 0);
+	clear_surface(blitter_p->blitter_.screenbuffer, 0);
 	redraw(menu); // redraw function also flips the screen. delete and restore sdl_flip if problematic
 	//SDL_Flip(screen);
-	clear_surface(screen, 0);
+	clear_surface(blitter_p->blitter_.screenbuffer, 0);
 	redraw(menu); // this third one is for triple-buffer
 	//SDL_Flip(screen);
 }
@@ -363,13 +363,13 @@ void clean_menu_screen(menu_t *menu){
 void clean_menu_screen_cheat(menu_t *menu){
 	/* doing this twice is just an ugly hack to get round an 
 	 * opendingux pre-release hardware surfaces bug */
-	clear_surface(screen, 0);
+	clear_surface(blitter_p->blitter_.screenbuffer, 0);
 	redraw_cheat(menu);
 	//SDL_Flip(screen);
-	clear_surface(screen, 0);
+	clear_surface(blitter_p->blitter_.screenbuffer, 0);
 	redraw_cheat(menu); // redraw function also flips the screen. delete and restore sdl_flip if problematic
 	//SDL_Flip(screen);
-	clear_surface(screen, 0);
+	clear_surface(blitter_p->blitter_.screenbuffer, 0);
 	redraw_cheat(menu); // this third one is for triple-buffer
 	//SDL_Flip(screen);
 }
@@ -1931,16 +1931,17 @@ static void redraw(menu_t *menu) {
 	if(forcemenuexit == 0){
 		clear_surface(menuscreen, 0xFFFFFF);
 		if((!gambatte_p->isCgb()) && (dmgbordername != "NONE")) { // if system is DMG
-			clear_surface(screen, convert_hexcolor(screen, menupalwhite));
-			paint_border(screen);
+			clear_surface(blitter_p->blitter_.screenbuffer, convert_hexcolor(blitter_p->blitter_.screenbuffer, menupalwhite));
+			paint_border(blitter_p->blitter_.screenbuffer);
 		} else if((gambatte_p->isCgb()) && (gbcbordername != "NONE")) { // if system is GBC
-			clear_surface(screen, 0x000000);
-			paint_border(screen);
+			clear_surface(blitter_p->blitter_.screenbuffer, 0x000000);
+			paint_border(blitter_p->blitter_.screenbuffer);
 		} else { //if border image is disabled
-			clear_surface(screen, 0x000000);
+			clear_surface(blitter_p->blitter_.screenbuffer, 0x000000);
 		}
 		display_menu(menuscreen, menu);
 		blitter_p->scaleMenu();
+		SDL_BlitSurface(blitter_p->blitter_.screenbuffer, NULL, screen, NULL);
 		SDL_Flip(screen);
 	}	
 }
@@ -1954,21 +1955,22 @@ static void redraw_blank(menu_t *menu) {
 		rect.h = 120;
 		clear_surface(menuscreen, 0xFFFFFF);
 		if((!gambatte_p->isCgb()) && (dmgbordername != "NONE")) { // if system is DMG
-			clear_surface(screen, convert_hexcolor(screen, menupalwhite));
-			paint_border(screen);
+			clear_surface(blitter_p->blitter_.screenbuffer, convert_hexcolor(blitter_p->blitter_.screenbuffer, menupalwhite));
+			paint_border(blitter_p->blitter_.screenbuffer);
 			display_menu(menuscreen, menu);
-			SDL_FillRect(menuscreen, &rect, convert_hexcolor(screen, 0xFFFFFF));
+			SDL_FillRect(menuscreen, &rect, convert_hexcolor(blitter_p->blitter_.screenbuffer, 0xFFFFFF));
 		} else if((gambatte_p->isCgb()) && (gbcbordername != "NONE")) { // if system is GBC
-			clear_surface(screen, 0x000000);
-			paint_border(screen);
+			clear_surface(blitter_p->blitter_.screenbuffer, 0x000000);
+			paint_border(blitter_p->blitter_.screenbuffer);
 			display_menu(menuscreen, menu);
-			SDL_FillRect(menuscreen, &rect, convert_hexcolor(screen, 0xFFFFFF));
+			SDL_FillRect(menuscreen, &rect, convert_hexcolor(blitter_p->blitter_.screenbuffer, 0xFFFFFF));
 		} else { //if border image is disabled
-			clear_surface(screen, 0x000000);
+			clear_surface(blitter_p->blitter_.screenbuffer, 0x000000);
 			display_menu(menuscreen, menu);
-			SDL_FillRect(menuscreen, &rect, convert_hexcolor(screen, 0xFFFFFF));
+			SDL_FillRect(menuscreen, &rect, convert_hexcolor(blitter_p->blitter_.screenbuffer, 0xFFFFFF));
 		}
 		blitter_p->scaleMenu();
+		SDL_BlitSurface(blitter_p->blitter_.screenbuffer, NULL, screen, NULL);
 		SDL_Flip(screen);
 	}	
 }
@@ -1977,16 +1979,17 @@ static void redraw_cheat(menu_t *menu) {
 	if(forcemenuexit == 0){
 		clear_surface(menuscreen, 0xFFFFFF);
 		if((!gambatte_p->isCgb()) && (dmgbordername != "NONE")) { // if system is DMG
-			clear_surface(screen, convert_hexcolor(screen, menupalwhite));
-			paint_border(screen);
+			clear_surface(blitter_p->blitter_.screenbuffer, convert_hexcolor(blitter_p->blitter_.screenbuffer, menupalwhite));
+			paint_border(blitter_p->blitter_.screenbuffer);
 		} else if((gambatte_p->isCgb()) && (gbcbordername != "NONE")) { // if system is GBC
-			clear_surface(screen, 0x000000);
-			paint_border(screen);
+			clear_surface(blitter_p->blitter_.screenbuffer, 0x000000);
+			paint_border(blitter_p->blitter_.screenbuffer);
 		} else { //if border image is disabled
-			clear_surface(screen, 0x000000);
+			clear_surface(blitter_p->blitter_.screenbuffer, 0x000000);
 		}
 		display_menu_cheat(menuscreen, menu);
 		blitter_p->scaleMenu();
+		SDL_BlitSurface(blitter_p->blitter_.screenbuffer, NULL, screen, NULL);
 		SDL_Flip(screen);
 	}
 }
